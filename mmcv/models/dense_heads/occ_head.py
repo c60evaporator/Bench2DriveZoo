@@ -426,8 +426,8 @@ class OccHead(BaseModule):
             out_dict['ins_seg_gt'] = self.get_ins_seg_gt(gt_instance[:, :1+self.n_future])  # [1, 5, 200, 200]
         if no_query:
             # output all zero results
-            out_dict['seg_out'] = torch.zeros((1, 5, 1, 200, 200),device=bev_feat.device).long()  # [1, 5, 1, 200, 200]
-            out_dict['ins_seg_out'] = torch.zeros((1, 5, 1, 200, 200),device=bev_feat.device).long()  # [1, 5, 200, 200]
+            out_dict['seg_out'] = torch.zeros_like(out_dict['seg_gt']).long()  # [1, 5, 1, 200, 200]
+            out_dict['ins_seg_out'] = torch.zeros_like(out_dict['ins_seg_gt']).long()  # [1, 5, 200, 200]
             return out_dict
 
 
