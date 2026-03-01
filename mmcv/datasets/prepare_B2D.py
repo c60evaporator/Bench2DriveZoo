@@ -1,3 +1,4 @@
+import gc
 import os
 from os.path import join
 import gzip, json, pickle
@@ -146,10 +147,13 @@ def get_action(index):
 
 def gengrate_map(map_root):
     map_infos = {}
-    for file_name in os.listdir(map_root):
+    for file_name in sorted(os.listdir(map_root)):
         if '.npz' in file_name:
-            map_info = dict(np.load(join(map_root,file_name), allow_pickle=True)['arr'])
             town_name = file_name.split('_')[0]
+            print(f'  loading {file_name} ...', flush=True)
+            npz_file = np.load(join(map_root,file_name), allow_pickle=True)
+            map_info = dict(npz_file['arr'])
+            npz_file.close()
             map_infos[town_name] = {} 
             lane_points = []
             lane_types = []
@@ -186,6 +190,9 @@ def gengrate_map(map_root):
             map_infos[town_name]['trigger_volumes_points'] = trigger_volumes_points
             map_infos[town_name]['trigger_volumes_sample_points'] = trigger_volumes_sample_points
             map_infos[town_name]['trigger_volumes_types'] = trigger_volumes_types
+            del map_info
+            gc.collect()
+            print(f'  done {town_name}', flush=True)
     with open(join(OUT_DIR,'b2d_map_infos.pkl'),'wb') as f:
         pickle.dump(map_infos,f)
 
