@@ -98,6 +98,7 @@ class UniadAgent(autonomous_agent.AutonomousAgent):
             (self.save_path / 'rgb_back_left').mkdir()
             (self.save_path / 'meta').mkdir()
             (self.save_path / 'bev').mkdir()
+            (self.save_path / 'detections').mkdir()
    
         # write extrinsics directly
         self.lidar2img = {
@@ -395,11 +396,11 @@ class UniadAgent(autonomous_agent.AutonomousAgent):
         metric_info = self.get_metric_info()
         self.metric_info[self.step] = metric_info
         if SAVE_PATH is not None and self.step % 1 == 0:
-            self.save(tick_data)
+            self.save(tick_data, output_data_batch)
         self.prev_control = control
         return control
 
-    def save(self, tick_data):
+    def save(self, tick_data, output_data_batch=None):
         frame = self.step // 10
         Image.fromarray(tick_data['imgs']['CAM_FRONT']).save(self.save_path / 'rgb_front' / ('%04d.png' % frame))
         Image.fromarray(tick_data['imgs']['CAM_FRONT_LEFT']).save(self.save_path / 'rgb_front_left' / ('%04d.png' % frame))
@@ -411,6 +412,30 @@ class UniadAgent(autonomous_agent.AutonomousAgent):
         outfile = open(self.save_path / 'meta' / ('%04d.json' % frame), 'w')
         json.dump(self.pid_metadata, outfile, indent=4)
         outfile.close()
+
+        # Save detection results (3D bounding boxes, scores, labels)
+        if output_data_batch is not None:
+            det_data = {}
+            result = output_data_batch[0]
+            # Tracked object detections
+            if 'boxes_3d' in result:
+                boxes_3d = result['boxes_3d']
+                det_data['corners_3d'] = boxes_3d.corners.cpu().numpy()  # (N, 8, 3)
+                det_data['boxes_tensor'] = boxes_3d.tensor.cpu().numpy()  # (N, 9) [x,y,z,w,l,h,yaw,vx,vy]
+            if 'scores_3d' in result:
+                scores = result['scores_3d']
+                det_data['scores_3d'] = scores.cpu().numpy() if torch.is_tensor(scores) else np.array(scores)
+            if 'labels_3d' in result:
+                labels = result['labels_3d']
+                det_data['labels_3d'] = labels.cpu().numpy() if torch.is_tensor(labels) else np.array(labels)
+            if 'track_ids' in result:
+                track_ids = result['track_ids']
+                det_data['track_ids'] = track_ids.cpu().numpy() if torch.is_tensor(track_ids) else np.array(track_ids)
+            if det_data:
+                np.savez_compressed(
+                    str(self.save_path / 'detections' / ('%04d.npz' % frame)),
+                    **det_data
+                )
 
         # metric info
         outfile = open(self.save_path / 'metric_info.json', 'w')
