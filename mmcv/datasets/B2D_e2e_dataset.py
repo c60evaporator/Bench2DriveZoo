@@ -48,6 +48,7 @@ class B2D_E2E_Dataset(Custom3DDataset):
         self.occ_only_total_frames = 7  # NOTE: hardcode, not influenced by planning   
         self.eval_mod = eval_mod     
         self.map_element_class = {'Broken':0, 'Solid':1, 'SolidSolid':2,'Center':3,'TrafficLight':4,'StopSign':5}
+        print(f'map_file={self.map_file}')
         with open(self.map_file,'rb') as f: 
             self.map_infos = pickle.load(f)
 
