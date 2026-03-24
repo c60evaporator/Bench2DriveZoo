@@ -393,6 +393,7 @@ class UniadAgent(autonomous_agent.AutonomousAgent):
         self.pid_metadata['throttle_traj'] = float(throttle_traj)
         self.pid_metadata['brake_traj'] = float(brake_traj)
         self.pid_metadata['plan'] = out_truck.tolist()
+        self.pid_metadata['command'] = int(command)
         metric_info = self.get_metric_info()
         self.metric_info[self.step] = metric_info
         if SAVE_PATH is not None and self.step % 1 == 0:
@@ -420,8 +421,9 @@ class UniadAgent(autonomous_agent.AutonomousAgent):
             # Tracked object detections
             if 'boxes_3d' in result:
                 boxes_3d = result['boxes_3d']
-                det_data['corners_3d'] = boxes_3d.corners.cpu().numpy()  # (N, 8, 3)
-                det_data['boxes_tensor'] = boxes_3d.tensor.cpu().numpy()  # (N, 9) [x,y,z,w,l,h,yaw,vx,vy]
+                if len(boxes_3d.tensor) > 0:
+                    det_data['corners_3d'] = boxes_3d.corners.cpu().numpy()  # (N, 8, 3)
+                    det_data['boxes_tensor'] = boxes_3d.tensor.cpu().numpy()  # (N, 9) [x,y,z,w,l,h,yaw,vx,vy]
             if 'scores_3d' in result:
                 scores = result['scores_3d']
                 det_data['scores_3d'] = scores.cpu().numpy() if torch.is_tensor(scores) else np.array(scores)
@@ -431,6 +433,30 @@ class UniadAgent(autonomous_agent.AutonomousAgent):
             if 'track_ids' in result:
                 track_ids = result['track_ids']
                 det_data['track_ids'] = track_ids.cpu().numpy() if torch.is_tensor(track_ids) else np.array(track_ids)
+
+            # Motion prediction trajectories
+            # traj: (N, num_modes, predict_steps*2) -> multi-modal future trajectories
+            # traj_scores: (N, num_modes) -> probability for each mode
+            if 'traj' in result:
+                traj = result['traj']
+                det_data['traj'] = traj.cpu().numpy() if torch.is_tensor(traj) else np.array(traj)
+            if 'traj_scores' in result:
+                traj_scores = result['traj_scores']
+                det_data['traj_scores'] = traj_scores.cpu().numpy() if torch.is_tensor(traj_scores) else np.array(traj_scores)
+
+            # Map segmentation (lane_score, drivable area)
+            # lane_score: (C, H, W) per-class lane confidence maps (divider/crossing/contour)
+            # drivable: (H, W) binary drivable area mask
+            # score_list: (N_masks, H, W) raw mask scores including drivable
+            if 'pts_bbox' in result:
+                pts_bbox = result['pts_bbox']
+                if 'lane_score' in pts_bbox:
+                    lane_score = pts_bbox['lane_score']
+                    det_data['lane_score'] = lane_score.cpu().numpy() if torch.is_tensor(lane_score) else np.array(lane_score)
+                if 'drivable' in pts_bbox:
+                    drivable = pts_bbox['drivable']
+                    det_data['drivable'] = drivable.cpu().numpy() if torch.is_tensor(drivable) else np.array(drivable)
+
             if det_data:
                 np.savez_compressed(
                     str(self.save_path / 'detections' / ('%04d.npz' % frame)),

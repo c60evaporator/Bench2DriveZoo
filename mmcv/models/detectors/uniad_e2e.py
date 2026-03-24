@@ -355,6 +355,12 @@ class UniAD(UniADTrack):
         result_track[0] = pop_elem_in_result(result_track[0], pop_track_list)
 
         if self.with_seg_head:
+            # Preserve map segmentation outputs (lane_score, drivable, score_list)
+            # before they are removed by pop_elem_in_result.
+            if 'pts_bbox' in result_seg[0]:
+                pts_bbox = result_seg[0]['pts_bbox']
+                for i, res in enumerate(result):
+                    res['pts_bbox'] = result_seg[i].get('pts_bbox', pts_bbox)
             result_seg[0] = pop_elem_in_result(result_seg[0], pop_list=['pts_bbox', 'args_tuple'])
         if self.with_motion_head:
             result_motion[0] = pop_elem_in_result(result_motion[0])
