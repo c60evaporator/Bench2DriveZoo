@@ -98,7 +98,7 @@ class UniadAgent(autonomous_agent.AutonomousAgent):
             (self.save_path / 'rgb_back_left').mkdir()
             (self.save_path / 'meta').mkdir()
             (self.save_path / 'bev').mkdir()
-            (self.save_path / 'detections').mkdir()
+            (self.save_path / 'inference').mkdir()
    
         # write extrinsics directly
         self.lidar2img = {
@@ -459,7 +459,7 @@ class UniadAgent(autonomous_agent.AutonomousAgent):
 
             if det_data:
                 np.savez_compressed(
-                    str(self.save_path / 'detections' / ('%04d.npz' % frame)),
+                    str(self.save_path / 'inference' / ('%04d.npz' % frame)),
                     **det_data
                 )
 
